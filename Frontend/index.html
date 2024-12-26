@@ -1,0 +1,201 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title Decentralized Study Timer
+ * @dev A simple contract to track study time for users.
+ */
+contract StudyTimer {
+    struct Timer {
+        uint256 startTime;
+        uint256 totalStudyTime;
+        bool isRunning;
+    }
+
+    // Mapping to store timers for each user
+    mapping(address => Timer) private timers;
+
+    /**
+     * @dev Starts the timer for the caller.
+     * Requirements: Timer must not already be running.
+     */
+    function startTimer() external {
+        require(!timers[msg.sender].isRunning, "Timer is already running!");
+        timers[msg.sender].startTime = block.timestamp;
+        timers[msg.sender].isRunning = true;
+    }
+
+    /**
+     * @dev Stops the timer for the caller and updates total study time.
+     * Requirements: Timer must be running.
+     */
+    function stopTimer() external {
+        require(timers[msg.sender].isRunning, "Timer is not running!");
+        uint256 timeElapsed = block.timestamp - timers[msg.sender].startTime;
+        timers[msg.sender].totalStudyTime += timeElapsed;
+        timers[msg.sender].isRunning = false;
+    }
+
+    /**
+     * @dev Retrieves the total study time for the caller.
+     * @return totalStudyTime Total time spent studying (in seconds).
+     */
+    function getTotalStudyTime() external view returns (uint256 totalStudyTime) {
+        return timers[msg.sender].totalStudyTime;
+    }
+
+    /**
+     * @dev Checks if the timer is running for the caller.
+     * @return isRunning True if timer is running, false otherwise.
+     */
+    function isTimerRunning() external view returns (bool isRunning) {
+        return timers[msg.sender].isRunning;
+    }
+}
+
+/* Frontend Code Below */
+
+// HTML FILE (index.html)
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Study Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        h1 {
+            color: #333;
+        }
+        #timerStatus, #totalTime {
+            margin: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Decentralized Study Timer</h1>
+        <p id="timerStatus">Timer Status: Not Running</p>
+        <p id="totalTime">Total Study Time: 0 seconds</p>
+        <button id="startTimer">Start Timer</button>
+        <button id="stopTimer">Stop Timer</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        let web3;
+        let contract;
+        const contractAddress = "0xcbE8e35B2b007ED68330d35fDFd6e21B0Dc18e4A";
+        const contractABI = [
+	{
+		"inputs": [],
+		"name": "startTimer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "stopTimer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalStudyTime",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalStudyTime",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "isTimerRunning",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "isRunning",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+        const connectWeb3 = async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                console.log("Web3 connected");
+            } else {
+                alert("Please install MetaMask to use this dApp");
+            }
+        };
+
+        const startTimer = async () => {
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.startTimer().send({ from: accounts[0] });
+            alert("Timer started!");
+            updateStatus();
+        };
+
+        const stopTimer = async () => {
+            const accounts = await web3.eth.getAccounts();
+            await contract.methods.stopTimer().send({ from: accounts[0] });
+            alert("Timer stopped!");
+            updateStatus();
+        };
+
+        const updateStatus = async () => {
+            const accounts = await web3.eth.getAccounts();
+            const isRunning = await contract.methods.isTimerRunning().call({ from: accounts[0] });
+            const totalTime = await contract.methods.getTotalStudyTime().call({ from: accounts[0] });
+            document.getElementById("timerStatus").innerText = `Timer Status: ${isRunning ? "Running" : "Not Running"}`;
+            document.getElementById("totalTime").innerText = `Total Study Time: ${totalTime} seconds`;
+        };
+
+        document.getElementById("startTimer").addEventListener("click", startTimer);
+        document.getElementById("stopTimer").addEventListener("click", stopTimer);
+        window.addEventListener("load", connectWeb3);
+    </script>
+</body>
+</html>
